@@ -54,7 +54,8 @@
 
 - (id)initWithTileSetResource:(NSString *)name ofType:(NSString *)extension
 {
-    return [self initWithTileSetURL:[NSURL fileURLWithPath:[[NSBundle mainBundle] pathForResource:name ofType:extension]]];
+    NSString *path = [NSString stringWithFormat:@"%@.%@", name, extension];
+    return [self initWithTileSetURL:[NSURL fileURLWithPath:path]];
 }
 
 - (id)initWithTileSetURL:(NSURL *)tileSetURL

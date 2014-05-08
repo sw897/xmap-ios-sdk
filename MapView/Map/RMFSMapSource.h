@@ -14,10 +14,8 @@
 
 @property int  relNumber;
 
-- (id)initWithPath:(NSString *)path;
+- (id)initWithPath:(NSString *)path minZoom:(float)minZoom maxZoom:(float)maxZoom;
 
 - (NSString*)folderName:(RMTile)tile;
-
-- (void) parser:(NSXMLParser *)parser didStartElement:(NSString *)elementName namespaceURI:(NSString *)namespaceURI qualifiedName:(NSString *)qName attributes:(NSDictionary *)attributeDict;
 
 @end

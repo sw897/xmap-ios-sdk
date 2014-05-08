@@ -50,16 +50,19 @@
 @synthesize relHeight;
 @synthesize relNumber;
 
-- (id)initWithPath:(NSString *)path
+- (id)initWithPath:(NSString *)path minZoom:(float)minZoom maxZoom:(float)maxZoom
 {
     if (!(self = [super init]))
         return nil;
     
+    _path = path;
+    self.minZoom = minZoom;
+    self.maxZoom = maxZoom;
+
     _uniqueTilecacheKey = [[path lastPathComponent] stringByDeletingPathExtension];
     
-    // todo read parameters from ImageProperties.xml
-    _path = path;
-    NSString *config = [NSString stringWithFormat:@"%@/Documents/%@/ImageProperties.xml",NSHomeDirectory(), _path];
+    // read parameters from ImageProperties.xml
+    NSString *config = [NSString stringWithFormat:@"%@/ImageProperties.xml", _path];
     
     if ([[NSFileManager defaultManager] fileExistsAtPath:config])
     {
@@ -71,17 +74,12 @@
         NSLog(@"%@",dataString);
         
         NSXMLParser *xmlParser = [[NSXMLParser alloc] initWithData:data];
-//        //设置该类本身为代理类，即该类在声明时要实现NSXMLParserDelegate委托协议
         [xmlParser setDelegate:self];
         [xmlParser setShouldProcessNamespaces:NO];
         [xmlParser setShouldReportNamespacePrefixes:NO];
         [xmlParser setShouldResolveExternalEntities:NO];
-        [xmlParser parse]; //开始解析
+        [xmlParser parse];
     }
-    self.minZoom = 0;
-    self.maxZoom = 7;
-    //_tileSideLength = 256;
-    
     return self;
 }
 
@@ -89,7 +87,7 @@
 {
     double pos = 0;
     int num = 0;
-    int worldsize = _tileSideLength*pow(2, self.maxZoom-1);
+    int worldsize = _tileSideLength*pow(2, self.maxZoom);
     for (int i = 0; i<tile.zoom; i++) {
         num = pow(2, i);
         pos += ceil(relWidth*num/worldsize)*ceil(relHeight*num/worldsize);
@@ -130,7 +128,7 @@
     
     // read image from file
     NSString *imgname = [NSString stringWithFormat:@"%d-%d-%d.jpg", tile.zoom, tile.x, tile.y];
-    NSString *imgfile=[NSString stringWithFormat:@"%@/Documents/%@/%@/%@",NSHomeDirectory(),_path, [self folderName:tile], imgname];
+    NSString *imgfile=[NSString stringWithFormat:@"%@/%@/%@", _path, [self folderName:tile], imgname];
     
     NSLog(@"%@", imgfile);
     
