@@ -59,12 +59,12 @@
 
 #define kZoomRectPixelBuffer 150.0
 
-#define kDefaultInitialLatitude  38.913175
-#define kDefaultInitialLongitude -77.032458
+#define kDefaultInitialLatitude  0
+#define kDefaultInitialLongitude 0
 
 #define kDefaultMinimumZoomLevel 0.0
 #define kDefaultMaximumZoomLevel 25.0
-#define kDefaultInitialZoomLevel 11.0
+#define kDefaultInitialZoomLevel 0.0
 
 #define kRMTrackingHaloAnnotationTypeName   @"RMTrackingHaloAnnotation"
 #define kRMAccuracyCircleAnnotationTypeName @"RMAccuracyCircleAnnotation"

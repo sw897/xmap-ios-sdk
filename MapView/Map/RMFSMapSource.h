@@ -5,12 +5,19 @@
 #import "RMAbstractMercatorTileSource.h"
 #import "RMProjection.h"
 
-@interface RMFSMapSource : RMAbstractMercatorTileSource
+@interface RMFSMapSource : RMAbstractMercatorTileSource <NSXMLParserDelegate>
+
+
+@property int  relWidth;
+
+@property int  relHeight;
+
+@property int  relNumber;
 
 - (id)initWithPath:(NSString *)path;
 
-- (CLLocationCoordinate2D)topLeftOfCoverage;
-- (CLLocationCoordinate2D)bottomRightOfCoverage;
-- (CLLocationCoordinate2D)centerOfCoverage;
+- (NSString*)folderName:(RMTile)tile;
+
+- (void) parser:(NSXMLParser *)parser didStartElement:(NSString *)elementName namespaceURI:(NSString *)namespaceURI qualifiedName:(NSString *)qName attributes:(NSDictionary *)attributeDict;
 
 @end

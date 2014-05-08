@@ -37,50 +37,18 @@
 #import "RMTileCache.h"
 #import "RMFractalTileProjection.h"
 
-#pragma mark --- begin constants ----
-
-// mandatory preference keys
-#define kMinZoomKey @"map.minZoom"
-#define kMaxZoomKey @"map.maxZoom"
-#define kTileSideLengthKey @"map.tileSideLength"
-
-// optional preference keys for the coverage area
-#define kCoverageTopLeftLatitudeKey @"map.coverage.topLeft.latitude"
-#define kCoverageTopLeftLongitudeKey @"map.coverage.topLeft.longitude"
-#define kCoverageBottomRightLatitudeKey @"map.coverage.bottomRight.latitude"
-#define kCoverageBottomRightLongitudeKey @"map.coverage.bottomRight.longitude"
-#define kCoverageCenterLatitudeKey @"map.coverage.center.latitude"
-#define kCoverageCenterLongitudeKey @"map.coverage.center.longitude"
-
-// optional preference keys for the attribution
-#define kShortNameKey @"map.shortName"
-#define kLongDescriptionKey @"map.longDescription"
-#define kShortAttributionKey @"map.shortAttribution"
-#define kLongAttributionKey @"map.longAttribution"
-
-#pragma mark --- end constants ----
-
-@interface RMFSMapSource (Preferences)
-
-- (NSString *)getPreferenceAsString:(NSString *)name;
-- (float)getPreferenceAsFloat:(NSString *)name;
-- (int)getPreferenceAsInt:(NSString *)name;
-
-@end
-
 #pragma mark -
 
 @implementation RMFSMapSource
 {
-    // coverage area
-    CLLocationCoordinate2D _topLeft;
-    CLLocationCoordinate2D _bottomRight;
-    CLLocationCoordinate2D _center;
-    
     NSString *_uniqueTilecacheKey;
     NSUInteger _tileSideLength;
-    
+    NSString *_path;
 }
+
+@synthesize relWidth;
+@synthesize relHeight;
+@synthesize relNumber;
 
 - (id)initWithPath:(NSString *)path
 {
@@ -88,48 +56,140 @@
         return nil;
     
     _uniqueTilecacheKey = [[path lastPathComponent] stringByDeletingPathExtension];
+    
+    // todo read parameters from ImageProperties.xml
+    _path = path;
+    NSString *config = [NSString stringWithFormat:@"%@/Documents/%@/ImageProperties.xml",NSHomeDirectory(), _path];
+    
+    if ([[NSFileManager defaultManager] fileExistsAtPath:config])
+    {
+        NSFileHandle *file = [NSFileHandle fileHandleForReadingAtPath:config];
+        NSData *data = [file readDataToEndOfFile];
+        [file closeFile];
+        
+        NSString *dataString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+        NSLog(@"%@",dataString);
+        
+        NSXMLParser *xmlParser = [[NSXMLParser alloc] initWithData:data];
+//        //设置该类本身为代理类，即该类在声明时要实现NSXMLParserDelegate委托协议
+        [xmlParser setDelegate:self];
+        [xmlParser setShouldProcessNamespaces:NO];
+        [xmlParser setShouldReportNamespacePrefixes:NO];
+        [xmlParser setShouldResolveExternalEntities:NO];
+        [xmlParser parse]; //开始解析
+    }
+    self.minZoom = 0;
+    self.maxZoom = 7;
+    //_tileSideLength = 256;
+    
+    return self;
+}
 
+- (NSString*)folderName:(RMTile)tile
+{
+    double pos = 0;
+    int num = 0;
+    int worldsize = _tileSideLength*pow(2, self.maxZoom-1);
+    for (int i = 0; i<tile.zoom; i++) {
+        num = pow(2, i);
+        pos += ceil(relWidth*num/worldsize)*ceil(relHeight*num/worldsize);
+    }
+    num = pow(2, tile.zoom);
+    pos += tile.y * ceil(relWidth*num/worldsize);
+    pos += tile.x;
+    //fixed 0-0-0.jpg
+    pos += 0.1;
+    int val = (int)(ceil(pos/_tileSideLength) - 1);
+    return [NSString stringWithFormat:@"TileGroup%d", val];
+}
+
+- (void) parser:(NSXMLParser *)parser didStartElement:(NSString *)elementName namespaceURI:(NSString *)namespaceURI qualifiedName:(NSString *)qName attributes:(NSDictionary *)attributeDict {
+    if([elementName isEqualToString:@"IMAGE_PROPERTIES"]) {
+        relWidth = [[attributeDict objectForKey:@"WIDTH"] integerValue];
+        relHeight = [[attributeDict objectForKey:@"HEIGHT"] integerValue];
+        relNumber = [[attributeDict objectForKey:@"NUMTILES"] integerValue];
+        _tileSideLength = [[attributeDict objectForKey:@"TILESIZE"] integerValue];
+    }
 }
 
 #pragma mark RMTileSource methods
 
 - (UIImage *)imageForTile:(RMTile)tile inCache:(RMTileCache *)tileCache
 {
-    	return nil;
+    __block UIImage *image = nil;
+    
+	tile = [[self mercatorToTileProjection] normaliseTile:tile];
+    
+    if (self.isCacheable)
+    {
+        image = [tileCache cachedImage:tile withCacheKey:[self uniqueTilecacheKey]];
+        
+        if (image)
+            return image;
+    }
+    
+    // read image from file
+    NSString *imgname = [NSString stringWithFormat:@"%d-%d-%d.jpg", tile.zoom, tile.x, tile.y];
+    NSString *imgfile=[NSString stringWithFormat:@"%@/Documents/%@/%@/%@",NSHomeDirectory(),_path, [self folderName:tile], imgname];
+    
+    NSLog(@"%@", imgfile);
+    
+    if ([[NSFileManager defaultManager] fileExistsAtPath:imgfile])
+    {
+        image = [[UIImage alloc] initWithContentsOfFile:imgfile];
+        CGSize size = image.size;
+        // copy image
+        if (size.height < _tileSideLength || size.width < _tileSideLength) {
+            CGSize finalSize;
+            finalSize.width = _tileSideLength;
+            finalSize.height = _tileSideLength;
+            UIGraphicsBeginImageContext(finalSize);
+            [image drawInRect:CGRectMake(0,0,size.width,size.height)];
+            image = UIGraphicsGetImageFromCurrentImageContext();
+            UIGraphicsEndImageContext();
+        }
+    }
+    else
+        image = [RMTileImage missingTile];
+    
+
+    if (image && self.isCacheable)
+        [tileCache addImage:image forTile:tile withCacheKey:[self uniqueTilecacheKey]];
+    
+	return image;
+}
+
+
+- (NSUInteger)tileSideLength
+{
+    return _tileSideLength;
+}
+
+- (NSString *)uniqueTilecacheKey
+{
+    return _uniqueTilecacheKey;
 }
 
 - (NSString *)shortName
 {
-	return [self getPreferenceAsString:kShortNameKey];
+	return @"FSMapSource";
 }
 
 - (NSString *)longDescription
 {
-	return [self getPreferenceAsString:kLongDescriptionKey];
+	return @"FileSystemMapSource";
 }
 
 - (NSString *)shortAttribution
 {
-	return [self getPreferenceAsString:kShortAttributionKey];
+	return @"kaka";
 }
 
 - (NSString *)longAttribution
 {
-	return [self getPreferenceAsString:kLongAttributionKey];
+	return @"kak";
 }
 
 #pragma mark preference methods
-
-- (float)getPreferenceAsFloat:(NSString *)name
-{
-	NSString *value = [self getPreferenceAsString:name];
-	return (value == nil) ? INT_MIN : [value floatValue];
-}
-
-- (int)getPreferenceAsInt:(NSString *)name
-{
-	NSString* value = [self getPreferenceAsString:name];
-	return (value == nil) ? INT_MIN : [value intValue];
-}
 
 @end
