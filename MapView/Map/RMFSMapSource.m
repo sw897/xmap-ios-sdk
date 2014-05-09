@@ -71,8 +71,8 @@
         NSData *data = [file readDataToEndOfFile];
         [file closeFile];
         
-        NSString *dataString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-        NSLog(@"%@",dataString);
+//        NSString *dataString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+//        NSLog(@"%@",dataString);
         
         NSXMLParser *xmlParser = [[NSXMLParser alloc] initWithData:data];
         [xmlParser setDelegate:self];
@@ -81,7 +81,7 @@
         [xmlParser setShouldResolveExternalEntities:NO];
         [xmlParser parse];
     }
-    worldSize = _tileSideLength*pow(2, self.maxZoom);
+    worldSize = _tileSideLength*pow(2, maxZoom);
     return self;
 }
 
@@ -92,10 +92,10 @@
     //int worldSize = _tileSideLength*pow(2, self.maxZoom);
     for (int i = 0; i<tile.zoom; i++) {
         num = pow(2, i);
-        pos += ceil(relWidth*num/worldSize)*ceil(relHeight*num/worldSize);
+        pos += ceil(relWidth*num*1./worldSize)*ceil(relHeight*num*1./worldSize);
     }
     num = pow(2, tile.zoom);
-    pos += tile.y * ceil(relWidth*num/worldSize);
+    pos += tile.y * ceil(relWidth*num*1./worldSize);
     pos += tile.x;
     //fixed 0-0-0.jpg
     pos += 0.1;
@@ -132,7 +132,7 @@
     NSString *imgname = [NSString stringWithFormat:@"%d-%d-%d.jpg", tile.zoom, tile.x, tile.y];
     NSString *imgfile=[NSString stringWithFormat:@"%@/%@/%@", _path, [self folderName:tile], imgname];
     
-    NSLog(@"%@", imgfile);
+//    NSLog(@"%@", imgfile);
     
     if ([[NSFileManager defaultManager] fileExistsAtPath:imgfile])
     {
@@ -149,8 +149,11 @@
             UIGraphicsEndImageContext();
         }
     }
-    else
+    else {
+        NSLog(@"%@", imgfile);
+        NSLog(@"%d, %d, %d", tile.zoom, tile.x, tile.y);
         image = [RMTileImage missingTile];
+    }
     
 
     if (image && self.isCacheable)
