@@ -49,6 +49,7 @@
 @synthesize relWidth;
 @synthesize relHeight;
 @synthesize relNumber;
+@synthesize worldSize;
 
 - (id)initWithPath:(NSString *)path minZoom:(float)minZoom maxZoom:(float)maxZoom
 {
@@ -80,6 +81,7 @@
         [xmlParser setShouldResolveExternalEntities:NO];
         [xmlParser parse];
     }
+    worldSize = _tileSideLength*pow(2, self.maxZoom);
     return self;
 }
 
@@ -87,13 +89,13 @@
 {
     double pos = 0;
     int num = 0;
-    int worldsize = _tileSideLength*pow(2, self.maxZoom);
+    //int worldSize = _tileSideLength*pow(2, self.maxZoom);
     for (int i = 0; i<tile.zoom; i++) {
         num = pow(2, i);
-        pos += ceil(relWidth*num/worldsize)*ceil(relHeight*num/worldsize);
+        pos += ceil(relWidth*num/worldSize)*ceil(relHeight*num/worldSize);
     }
     num = pow(2, tile.zoom);
-    pos += tile.y * ceil(relWidth*num/worldsize);
+    pos += tile.y * ceil(relWidth*num/worldSize);
     pos += tile.x;
     //fixed 0-0-0.jpg
     pos += 0.1;
@@ -156,7 +158,6 @@
     
 	return image;
 }
-
 
 - (NSUInteger)tileSideLength
 {

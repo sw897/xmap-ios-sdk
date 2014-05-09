@@ -14,6 +14,8 @@
 
 @property int  relNumber;
 
+@property int  worldSize;
+
 - (id)initWithPath:(NSString *)path minZoom:(float)minZoom maxZoom:(float)maxZoom;
 
 - (NSString*)folderName:(RMTile)tile;
